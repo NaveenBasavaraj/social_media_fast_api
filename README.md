@@ -1,6 +1,6 @@
-# social_media_fast_api
+# Social Media App Using Fast Api
 
-simple social media api
+## Simple Steps
 
 1. create virtual environment and install fastapi
 
