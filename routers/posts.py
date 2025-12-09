@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from fastapi.params import Body
+from models import Post
 
 router = APIRouter()
 
@@ -15,6 +16,6 @@ async def get_posts():
 
 
 @router.post("/createposts")
-async def create_posts(payload: dict = Body(...)):
-    print(f"{payload}")
-    return {"payload": payload}
+async def create_posts(new_post: Post):  # (payload: dict = Body(...))
+    print(f"{new_post}")
+    return {"title": new_post.title}
