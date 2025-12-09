@@ -242,5 +242,3 @@ Next steps / improvements
 - Use Alembic for migrations instead of `create_all` (recommended for production)
 - Add a `healthcheck` to the `db` service in `docker-compose.yml` and/or an init-wait script so the app waits for DB readiness more robustly.
 - Add authentication and replace the hardcoded `fake_user_id` in `routers/posts.py` with real user IDs from login.
-
-If you want, I can add an example Alembic setup, a `healthcheck` to `docker-compose.yml`, or a small `wait-for-db` script. Tell me which you'd prefer.
