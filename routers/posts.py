@@ -1,21 +1,34 @@
-from fastapi import APIRouter
-from fastapi.params import Body
-from models import Post
+# app/routers/posts.py
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from typing import List
 
-router = APIRouter()
+from db.session import get_db
+from models.post import Post
+from schemas.post import PostCreate, PostOut
 
-
-@router.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-
-@router.get("/posts")
-async def get_posts():
-    return {"data": "This is your posts"}
+router = APIRouter(prefix="/posts", tags=["Posts"])
 
 
-@router.post("/createposts")
-async def create_posts(new_post: Post):  # (payload: dict = Body(...))
-    print(f"{new_post}")
-    return {"title": new_post.title}
+@router.get("/", response_model=List[PostOut])
+def get_posts(db: Session = Depends(get_db)):
+    posts = db.query(Post).all()
+    return posts
+
+
+@router.post("/", response_model=PostOut, status_code=201)
+def create_post(post: PostCreate, db: Session = Depends(get_db)):
+    # TEMP: hardcoded user (will be replaced by auth)
+    fake_user_id = 1
+
+    new_post = Post(
+        title=post.title,
+        content=post.content,
+        owner_id=fake_user_id,
+    )
+
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
+
+    return new_post
