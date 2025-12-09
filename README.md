@@ -242,3 +242,61 @@ Next steps / improvements
 - Use Alembic for migrations instead of `create_all` (recommended for production)
 - Add a `healthcheck` to the `db` service in `docker-compose.yml` and/or an init-wait script so the app waits for DB readiness more robustly.
 - Add authentication and replace the hardcoded `fake_user_id` in `routers/posts.py` with real user IDs from login.
+
+**Recent changes (what I changed here and why)**
+
+- Startup DB creation + retry: the app now waits (short retry loop) for the database to accept connections when the app starts, then calls `Base.metadata.create_all(bind=engine)` to create tables if they do not exist. This helps prevent the `relation "posts" does not exist` error that happens when the app queries too early.
+
+- Default user seeding: the app now seeds a default user on startup if the `users` table is empty. This was added to avoid the foreign-key error you saw when the example `POST /posts` route uses a hardcoded `fake_user_id = 1` (in `routers/posts.py`). The seeded default user looks like:
+
+```python
+# snippet from main.py startup seeding
+from db.session import SessionLocal
+from models.user import User
+
+db = SessionLocal()
+try:
+        existing = db.query(User).first()
+        if not existing:
+                user = User(
+                        email="admin@example.com",
+                        username="admin",
+                        hashed_password="password",  # development-only plain text
+                )
+                db.add(user)
+                db.commit()
+finally:
+        db.close()
+```
+
+Note: this is a convenience for development and demo purposes only. The password above is stored in plain text in the example (for simplicity) — do NOT use this pattern in production.
+
+How to improve the seeded user (recommended)
+
+- Hash the password using `passlib` (example with bcrypt):
+
+```python
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+hashed = pwd_context.hash("your-plaintext-password")
+user = User(email="admin@example.com", username="admin", hashed_password=hashed)
+```
+
+- Or remove the seeding entirely and create users via a dedicated endpoint or migration script.
+
+How to avoid the FK error without seeding
+
+- Update `routers/posts.py` to accept an owner id in the request body and validate it exists before inserting the post.
+- Or change the example to create a user first, then create posts using that user's id.
+
+Docker tip: `db` hostname
+
+- When you run with `docker-compose`, the Postgres service is reachable at hostname `db` (as configured in `docker-compose.yml` and the `.env` example). When running locally (outside Docker) change `DATABASE_URL` to use `localhost` (or the appropriate host) so the app can connect.
+
+If you'd like, I can:
+
+- Replace the plain-text seed with a hashed-password seed (I can add `passlib` to `requirements.txt`).
+- Add a small `wait-for-db` helper or a `healthcheck` in `docker-compose.yml` so startup is more robust.
+- Scaffold Alembic and create an initial migration instead of using `create_all`.

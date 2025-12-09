@@ -8,6 +8,9 @@ from db.base import Base
 from db.session import engine
 import time
 from sqlalchemy.exc import OperationalError
+from db.session import SessionLocal
+from models.user import User
+from sqlalchemy.exc import IntegrityError
 
 app = FastAPI()
 app.include_router(posts.router)
@@ -28,6 +31,25 @@ def on_startup():
             time.sleep(2)
 
     Base.metadata.create_all(bind=engine)
+
+    # Seed a default user to avoid foreign-key errors from hardcoded owner_id in example routes
+    db = SessionLocal()
+    try:
+        # If there are no users, create a default one with id=1
+        existing = db.query(User).first()
+        if not existing:
+            try:
+                user = User(
+                    email="admin@example.com",
+                    username="admin",
+                    hashed_password="password",
+                )
+                db.add(user)
+                db.commit()
+            except IntegrityError:
+                db.rollback()
+    finally:
+        db.close()
 
 
 # @app.get("/")
